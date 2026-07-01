@@ -174,6 +174,7 @@ function UploadResume({ darkMode, setDarkMode }) {
 </div>
 
               <div
+              onClick={() => navigate("/history")}
   style={{
     display: "flex",
     justifyContent: "space-between",
