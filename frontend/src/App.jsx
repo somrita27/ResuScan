@@ -23,7 +23,7 @@ function App() {
         <Route path="/upload" element={<UploadResume darkMode={darkMode} setDarkMode={setDarkMode} />} />
         <Route path="/profile" element={<Profile darkMode={darkMode} setDarkMode={setDarkMode} />} />
         <Route path="/history" element={<History darkMode={darkMode} />} />
-        <Route path="/result" element={<Result />} />
+        <Route path="/result" element={<Result darkMode={darkMode} />} />
       </Routes>
     </BrowserRouter>
   );

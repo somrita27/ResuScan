@@ -87,6 +87,8 @@ const filteredHistory = historyItems.filter((item) =>
     <div
       style={{
         minHeight: "100vh",
+width: "100%",
+paddingBottom: "40px",
         background: darkMode
           ? "linear-gradient(135deg,#020817 0%,#08152F 25%,#102A6B 65%,#2563EB 100%)"
           : "linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb)",
@@ -100,7 +102,7 @@ const filteredHistory = historyItems.filter((item) =>
           background: darkMode
             ? "#000000"
             : "#ffffff",
-          padding: "15px 30px",
+          padding: "7px 30px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -152,7 +154,7 @@ const filteredHistory = historyItems.filter((item) =>
           margin: "40px auto",
           padding: isMobile
             ? "20px"
-            : "40px"
+            : "7px"
         }}
       >
         {/* TITLE */}

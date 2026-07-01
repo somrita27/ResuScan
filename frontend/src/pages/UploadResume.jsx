@@ -86,7 +86,7 @@ function UploadResume({ darkMode, setDarkMode }) {
       <div
   style={{
     background: darkMode ? "#000000" : "#ffffff",
-    padding: "15px 30px",
+    padding: "7px 30px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -174,7 +174,6 @@ function UploadResume({ darkMode, setDarkMode }) {
 </div>
 
               <div
-              onClick={() => navigate("/history")}
   style={{
     display: "flex",
     justifyContent: "space-between",
@@ -243,6 +242,10 @@ function UploadResume({ darkMode, setDarkMode }) {
 </div>
 
 <div
+  onClick={() => {
+    setMenuOpen(false);
+    navigate("/");
+  }}
   style={{
     display: "flex",
     alignItems: "center",

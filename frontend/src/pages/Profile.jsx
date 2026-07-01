@@ -52,7 +52,8 @@ function Profile({ darkMode }) {
     <div
       style={{
         minHeight: "100vh",
-
+width: "100%",
+paddingBottom: "5px",
         background: darkMode
           ? "linear-gradient(135deg,#020817 0%,#08152F 25%,#102A6B 65%,#2563EB 100%)"
           : "linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb)",
@@ -67,20 +68,16 @@ function Profile({ darkMode }) {
           background: darkMode
             ? "#000000"
             : "#ffffff",
-
-          padding: "15px 30px",
-
+          padding: "7px 30px",
           display: "flex",
-
           justifyContent: "space-between",
-
           alignItems: "center",
-
+          
           borderBottom: darkMode
             ? "1px solid #1f2937"
             : "1px solid #e5e7eb",
-
-          boxShadow: darkMode
+          
+            boxShadow: darkMode
             ? "0 2px 10px rgba(0,0,0,0.5)"
             : "0 2px 10px rgba(0,0,0,0.08)"
         }}
@@ -103,23 +100,23 @@ function Profile({ darkMode }) {
           }
           style={{
             display: "flex",
-
+           
             alignItems: "center",
-
+           
             gap: "8px",
-
+           
             background: "none",
-
+           
             border: "none",
-
+           
             cursor: "pointer",
-
+           
             color: darkMode
               ? "#ffffff"
               : "#111827",
-
+            
             fontWeight: "600",
-
+            
             fontSize: "16px"
           }}
         >
@@ -134,12 +131,10 @@ function Profile({ darkMode }) {
       <div
         style={{
           maxWidth: "900px",
-
           margin: "40px auto",
-
           padding: isMobile
             ? "20px"
-            : "40px"
+            : "20px"
         }}
       >
         <div
