@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import logo from "../assets/Logo.png";
+import demoPoster from "../assets/AI-Powered Resume & Career Assistant.png";
+import demoVideo from "../assets/Demo_Video(ResuScan).mp4";
 
 function Home() {
   const [isMobile, setIsMobile] = useState(
@@ -205,22 +207,39 @@ padding: isMobile ? "20px 20px" : "0px 50px 40px 50px",
               padding: "20px"
             }}
           >
-            <h2
+            {/* <h2
               style={{
                 marginBottom: "15px"
               }}
             >
               Demo Video
-            </h2>
+            </h2> */}
 
-            <p
-              style={{
-                color: "#cbd5e1"
-              }}
-            >
-              Your project demonstration
-              video will appear here.
-            </p>
+            {/* <img
+  src={demoPoster}
+  alt="ResuScan Demo"
+  style={{
+    width: "100%",
+    maxWidth: "900px",
+    height: "900px",
+    borderRadius: "12px",
+    display: "block",
+    margin: "0 auto",
+  }}
+/> */}
+
+<video
+  src={demoVideo}
+  controls
+  style={{
+    width: "100%",
+    maxWidth: "900px",
+    height: "800px",
+    borderRadius: "12px",
+    display: "block",
+    margin: "0 auto",
+  }}
+/>
           </div>
         </div>
       </div>

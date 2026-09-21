@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import logo from "../assets/Logo.png";
 import {
@@ -15,35 +15,62 @@ import {
   FaDownload,
   FaCopy
 } from "react-icons/fa";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 function Result({ darkMode }) {
 
   const navigate = useNavigate();
-const summary = `
-Highly motivated Computer Science student with strong
-knowledge of Java, React, SQL, Firebase and Web Development.
-Experienced in building responsive web applications and
-AI-powered projects with problem-solving skills.
-`;
+  const location = useLocation();
+  const historyData = location.state?.historyData || null;
+  const fromHistory = location.state?.fromHistory || false;
+  const autoDownload = location.state?.autoDownload || false;
 
-const skills = [
-  "Java",
-  "React",
-  "JavaScript",
-  "HTML",
-  "CSS",
-  "SQL",
-  "Firebase",
-  "Git",
-  "GitHub",
-  "Problem Solving"
-];
+  const backendData =
+    location.state?.backendData || {};
+    
+  const uploadedFileName = location.state?.fileName || "Uploaded Resume";
+  
+  const analysisMode =
+    backendData?.analysis_mode || "resume";
+  
+    const atsSubtitle =
+    analysisMode === "resume"
+      ? "Resume Quality Score"
+      : "Job Match Score";
 
-const atsScore = 88;
+  const roleTitle =
+    analysisMode === "resume"
+      ? "Predicted Career Role"
+      : "Best Job Match";
 
-const predictedRole = "Frontend Developer";
+  const isResumeMode = analysisMode === "resume";
+  const isJobMode = analysisMode === "job";
 
-const confidence = "High";
+const summary = fromHistory
+  ? historyData.summary
+  : backendData?.summary || "Summary not available.";
+
+const skills = fromHistory
+  ? historyData.skills
+  : backendData?.resume?.skills || [];
+
+const atsScore = fromHistory
+  ? historyData.score
+  : analysisMode === "resume"
+      ? backendData?.ats_score || 0
+      : backendData?.analysis?.score || 0;
+
+const predictedRole = fromHistory
+  ? historyData.role
+  : analysisMode === "resume"
+      ? backendData?.job_role?.role || "Not Predicted"
+      : backendData?.analysis?.best_job_match || "No Match Found";
+
+const confidence =
+  analysisMode === "resume"
+    ? backendData?.job_role?.level || "Unknown"
+    : backendData?.analysis?.fit_level || "Unknown";
 
 let atsColor = "#2563eb";
 let atsText = "Good Match";
@@ -62,21 +89,26 @@ if (atsScore >= 90) {
   atsText = "Needs Improvement";
 }
 
-const missingSkills = [
-  "Docker",
-  "AWS",
-  "Node.js",
-  "REST API"
-];
+const suggestions = fromHistory
+  ? historyData.suggestions
+  : backendData?.resume_suggestions || [];
 
-const suggestions = [
-  "Add measurable achievements",
-  "Improve keyword matching",
-  "Include GitHub profile",
-  "Add relevant certifications"
-];
+const jobSuggestions =
+  backendData?.analysis?.job_suggestions || [];
 
-  const [isMobile, setIsMobile] = useState(
+const missingSkills = fromHistory
+  ? historyData.missingSkills
+  : analysisMode === "job"
+      ? backendData?.analysis?.missing_skills || []
+      : [];
+
+const matchedSkills =
+  backendData?.analysis?.matched_skills || [];
+
+const fitPercentage =
+  backendData?.analysis?.fit_confidence || 0;
+
+const [isMobile, setIsMobile] = useState(
     window.innerWidth < 768
   );
 
@@ -99,17 +131,340 @@ const suggestions = [
 
   }, []);
 
-  const copySummary = () => {
-  navigator.clipboard.writeText(summary);
+  useEffect(() => {
+  if (!backendData) return;
 
-  alert("Summary copied successfully!");
+  const history =
+    JSON.parse(localStorage.getItem("resumeHistory")) || [];
+
+  const historyItem = {
+    id: Date.now(),
+
+    file: uploadedFileName,
+
+    date: new Date().toLocaleString(),
+
+    mode: analysisMode,
+
+    ats: atsScore + "%",
+
+    role:
+  analysisMode === "resume"
+    ? predictedRole
+    : backendData?.analysis?.best_job_match || "No Match Found",
+
+    summary,
+
+    skills,
+
+    suggestions,
+
+    missingSkills,
+
+    score: atsScore,
+  };
+
+  // Prevent duplicate entries in React Strict Mode
+  const alreadyExists = history.some(
+    (item) =>
+      item.summary === historyItem.summary &&
+      item.mode === historyItem.mode &&
+      item.ats === historyItem.ats
+  );
+
+  if (!alreadyExists) {
+    history.unshift(historyItem);
+
+    localStorage.setItem(
+      "resumeHistory",
+      JSON.stringify(history)
+    );
+  }
+}, []);
+
+  const copyReport = async () => {
+  let report = "";
+
+  if (analysisMode === "resume") {
+    report = `======================================
+ResuScan - Resume Analysis Report
+======================================
+
+Resume Summary
+--------------
+${summary}
+
+Extracted Skills
+----------------
+${skills.join(", ")}
+
+Resume Quality Score
+--------------------
+${atsScore}%
+
+Predicted Career Role
+---------------------
+${predictedRole}
+
+Resume Suggestions
+------------------
+${suggestions.map((item) => `• ${item}`).join("\n")}
+
+--------------------------------------
+Generated by ResuScan
+`;
+  } else {
+    report = `======================================
+ResuScan - Job Analysis Report
+======================================
+
+Resume Summary
+--------------
+${summary}
+
+Extracted Skills
+----------------
+${skills.join(", ")}
+
+Job Quality Score
+-----------------
+${atsScore}%
+
+Skill Gap Analysis
+------------------
+${
+  missingSkills.length > 0
+    ? missingSkills.map((item) => `• ${item}`).join("\n")
+    : "No skill gaps found."
+}
+
+Resume Suggestions
+------------------
+${suggestions.map((item) => `• ${item}`).join("\n")}
+
+--------------------------------------
+Generated by ResuScan
+`;
+  }
+
+  try {
+    await navigator.clipboard.writeText(report);
+    setToast({
+  show: true,
+  message: "Report copied successfully!",
+  type: "success",
+});
+
+setTimeout(() => {
+  setToast({
+    show: false,
+    message: "",
+    type: "success",
+  });
+}, 3000);
+  } catch (error) {
+    console.error(error);
+    setToast({
+  show: true,
+  message: "Failed to copy report!",
+  type: "error",
+});
+
+setTimeout(() => {
+  setToast({
+    show: false,
+    message: "",
+    type: "error",
+  });
+}, 3000);
+  }
+};
+const [toast, setToast] = useState({
+  show: false,
+  message: "",
+  type: "success",
+});
+
+const addSectionTitle = (doc, title, y) => {
+  doc.setFillColor(37, 99, 235);
+  doc.roundedRect(15, y - 6, 180, 10, 2, 2, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15);
+  doc.setFont("helvetica", "bold");
+  doc.text(title, 20, y);
+
+  doc.setTextColor(0, 0, 0);
 };
 
 const downloadReport = () => {
-  alert(
-    "PDF download will be available after backend integration."
+  const doc = new jsPDF("p", "mm", "a4");
+
+  // Current Date & Time
+  const now = new Date();
+
+  const date = now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const time = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Resume File Name
+  const resumeFile =
+    backendData?.resume?.filename ||
+    backendData?.file_name ||
+    "Uploaded Resume";
+
+  // Report Title
+  const reportTitle =
+    analysisMode === "resume"
+      ? "Professional Resume Analysis Report"
+      : "Professional Job Match Report";
+
+  const reportType =
+    analysisMode === "resume"
+      ? "Resume Analysis"
+      : "Resume + Job Analysis";
+
+  // ===== Cover =====
+
+  // Logo
+doc.addImage(
+  logo,
+  "PNG",
+  87,
+  15,
+  36,
+  36
+);
+
+// Project Name
+doc.setFont("helvetica", "bold");
+doc.setFontSize(24);
+doc.text("ResuScan", 105, 60, {
+  align: "center",
+});
+
+  doc.setFontSize(17);
+  doc.setFont("helvetica", "normal");
+  doc.text(reportTitle, 105, 72, {
+    align: "center",
+  });
+
+  doc.setDrawColor(37, 99, 235);
+  doc.line(20, 82, 190, 82);
+
+  doc.setFontSize(13);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Resume File:", 20, 105);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(resumeFile, 60, 105);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Generated On:", 20, 120);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`${date} | ${time}`, 60, 120);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Report Type:", 20, 135);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(reportType, 60, 135);
+
+  doc.line(20, 150, 190, 150);
+
+  // Footer
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+
+  doc.text(
+    "Generated by ResuScan • © 2026 ResuScan",
+    105,
+    285,
+    { align: "center" }
   );
+doc.addPage();
+
+{/*Resume Summary*/}
+let y = 20;
+addSectionTitle(doc, "Resume Summary", y);
+y += 12;
+doc.setFontSize(11);
+doc.setFont("helvetica", "normal");
+const summaryLines = doc.splitTextToSize(summary, 170);
+doc.text(summaryLines, 20, y);
+y += summaryLines.length * 6 + 10;
+
+{/*Skills Section*/}
+addSectionTitle(doc, "Skills Extracted", y);
+y += 12;
+doc.setFontSize(11);
+skills.forEach((skill) => {
+  doc.text("• " + skill, 22, y);
+  y += 7;
+});
+y += 5;
+
+{/*ATS Section*/}
+if (analysisMode === "resume") {
+    addSectionTitle(doc, "Resume Quality Score", y);
+} else {
+    addSectionTitle(doc, "Job Quality Score", y);
+}
+y += 12;
+doc.setFontSize(18);
+doc.setFont("helvetica", "bold");
+doc.text(`${atsScore}%`, 20, y);
+y += 15;
+
+{/*Dynamic Section*/}
+if (analysisMode === "resume") {
+    addSectionTitle(doc, "Predicted Career Role", y);
+    y += 12;
+    doc.setFontSize(12);
+    doc.text(predictedRole, 20, y);
+    y += 15;
+}
+else {
+    addSectionTitle(doc, "Skill Gap Analysis", y);
+    y += 12;
+    missingSkills.forEach((skill) => {
+        doc.text("• " + skill, 20, y);
+        y += 7;
+    });
+    y += 10;
+}
+
+{/*Suggestions*/}
+addSectionTitle(doc, "Resume Suggestions", y);
+y += 12;
+doc.setFont("helvetica", "normal");
+doc.setFontSize(11);
+suggestions.forEach((item) => {
+    const lines = doc.splitTextToSize(
+        "• " + item,
+        165
+    );
+    doc.text(lines, 22, y);
+    y += lines.length * 6 + 2;
+});
+
+
+  doc.save("ResuScan_Report.pdf");
 };
+useEffect(() => {
+  if (autoDownload) {
+    downloadReport();
+  }
+}, [autoDownload]);
 
   return (
 
@@ -352,29 +707,42 @@ paddingBottom: "10px",
       alignItems: "center",
       gap: "12px",
       color: darkMode ? "#ffffff" : "#111827",
-      marginBottom: "25px"
+      marginBottom: "2px"
     }}
   >
     <FaStar color="#fbbf24" />
 
     ATS Score
   </h2>
+  
+  <p
+  style={{
+    fontSize: "14px",
+    color: darkMode ? "#cbd5e1" : "#64748b",
+    marginTop: "8px",
+    marginBottom: "22px",   // <-- Adds space before the circle
+    fontWeight: "500",
+    letterSpacing: "0.3px",
+  }}
+>
+  {atsSubtitle}
+</p>
 
-  <div
-    style={{
-      width: "150px",
-      height: "150px",
-      margin: "0 auto",
-      borderRadius: "50%",
-      border: `10px solid ${atsColor}`,
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      fontSize: "42px",
-      fontWeight: "700",
-      color: atsColor
-    }}
-  >
+<div
+  style={{
+    width: "150px",
+    height: "150px",
+    margin: "0 auto",
+    borderRadius: "50%",
+    border: `10px solid ${atsColor}`,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: "44px",
+    fontWeight: "700",
+    color: atsColor
+  }}
+>
     {atsScore}%
   </div>
 
@@ -413,7 +781,7 @@ paddingBottom: "10px",
   >
     <FaBriefcase color="#8b5cf6" />
 
-    Predicted Job Role
+    {roleTitle}
   </h2>
 
   <h1
@@ -427,21 +795,31 @@ paddingBottom: "10px",
   </h1>
 
   <div
-    style={{
-      background: darkMode ? "#1f2937" : "#eff6ff",
-      borderRadius: "12px",
-      padding: "14px",
-      display: "inline-block",
-      color: darkMode ? "#ffffff" : "#2563eb",
-      fontWeight: "600"
-    }}
-  >
-    Confidence: {confidence}
-  </div>
+  style={{
+    background: darkMode ? "#1f2937" : "#eff6ff",
+    borderRadius: "12px",
+    padding: "14px",
+    display: "inline-block",
+    color: darkMode ? "#ffffff" : "#2563eb",
+    fontWeight: "600"
+  }}
+>
+  {isResumeMode ? (
+    <>
+      Career Prediction Confidence: {confidence}
+    </>
+  ) : (
+    <>
+      Resume Fit: {fitPercentage}% • {confidence} Match
+    </>
+  )}
+</div>
 
 </div>
 
 {/* SKILL GAP */}
+
+{isJobMode && (
 
 <div
   style={{
@@ -501,6 +879,7 @@ paddingBottom: "10px",
   ))}
 
 </div>
+)}
 
 {/* SUGGESTIONS */}
 
@@ -536,7 +915,11 @@ paddingBottom: "10px",
       marginBottom: "18px"
     }}
   >
-    Recommended Improvements
+{
+  isResumeMode
+    ? "Recommended Resume Improvements"
+    : "Resume Improvements"
+}
   </p>
 
   {suggestions.map((item) => (
@@ -562,6 +945,61 @@ paddingBottom: "10px",
     </div>
 
   ))}
+  {
+  isJobMode &&
+  jobSuggestions.length > 0 && (
+    <>
+      <hr
+        style={{
+          margin: "24px 0",
+          border: "none",
+          borderTop: darkMode
+            ? "1px solid #374151"
+            : "1px solid #e5e7eb"
+        }}
+      />
+
+      <p
+        style={{
+          color: darkMode
+            ? "#d1d5db"
+            : "#6b7280",
+          fontWeight: "700",
+          marginBottom: "18px"
+        }}
+      >
+        Job-Specific Improvements
+      </p>
+
+      {jobSuggestions.map((item) => (
+
+        <div
+          key={item}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "14px",
+            color: darkMode
+              ? "#ffffff"
+              : "#374151"
+          }}
+        >
+
+          <FaCheckCircle
+            size={15}
+            color="#10b981"
+          />
+
+          {item}
+
+        </div>
+
+      ))}
+
+    </>
+  )
+}
 
 </div>
 
@@ -620,7 +1058,7 @@ paddingBottom: "10px",
   {/* COPY */}
 
   <button
-    onClick={copySummary}
+    onClick={copyReport}
     style={{
       display: "flex",
       alignItems: "center",
@@ -648,12 +1086,38 @@ paddingBottom: "10px",
   >
     <FaCopy />
 
-    Copy Summary
+    Copy Report
   </button>
 
 </div>
 
       </div>
+
+      {toast.show && (
+  <div
+    style={{
+      position: "fixed",
+      bottom: "25px",
+      right: "25px",
+      background: toast.type === "success" ? "#0e7251" : "#9f1f1f",
+      color: "#fff",
+      padding: "14px 22px",
+      borderRadius: "12px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      fontSize: "15px",
+      fontWeight: "600",
+      zIndex: 9999,
+      animation: "slideInToast .3s ease",
+    }}
+  >
+    {toast.type === "success" ? "✅ " : "❌ "}
+
+    {toast.message}
+  </div>
+)}
 
     </div>
 

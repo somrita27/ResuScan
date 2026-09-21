@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import {uploadResume,analyzeResume,} from "../services/api";
 import logo from "../assets/Logo.png";
 import {
   FaBars,
@@ -24,6 +25,7 @@ function UploadResume({ darkMode, setDarkMode }) {
     useState("");
 
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [progress, setProgress] = useState(0);
 
   const [isMobile, setIsMobile] = useState(
@@ -44,32 +46,91 @@ function UploadResume({ darkMode, setDarkMode }) {
       );
   }, []);
 
-  const handleAnalyze = () => {
-    if (!selectedFile) {
-      alert("Please upload a resume.");
-      return;
-    }
+const handleAnalyze = async () => {
+  if (!selectedFile) {
+    setErrorMessage("⚠ Please upload a resume first.");
+    return;
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
+  setErrorMessage("");
+  setProgress(0);
 
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+
+  try {
     let value = 0;
 
     const interval = setInterval(() => {
       value += 10;
       setProgress(value);
 
-      if (value >= 100) {
+      if (value >= 90) {
         clearInterval(interval);
-
-        navigate("/result", {
-          state: {
-            fileName: selectedFile.name,
-            jobDescription
-          }
-        });
       }
     }, 200);
-  };
+
+    // -----------------------------
+    // STEP 1: Upload Resume
+    // -----------------------------
+    const uploadResponse = await uploadResume(formData);
+
+    let finalResponse = uploadResponse;
+
+    // -----------------------------
+    // STEP 2: If Job Description exists,
+    // perform Job Match Analysis
+    // -----------------------------
+    const hasJobDescription =
+      showJobDescription &&
+      jobDescription.trim().length > 0;
+
+    if (hasJobDescription) {
+      const analyzeResponse = await analyzeResume(
+        uploadResponse.resume.text,
+        jobDescription
+      );
+
+      finalResponse = {
+        ...uploadResponse,
+        ...analyzeResponse,
+      };
+    }
+
+    setProgress(100);
+
+    setTimeout(() => {
+      navigate("/result", {
+        state: {
+          backendData: finalResponse,
+          fileName: selectedFile.name,
+          jobDescription,
+        },
+      });
+
+      setLoading(false);
+    }, 300);
+
+  } catch (error) {
+    console.error(error);
+
+    if (error.response) {
+  setErrorMessage(
+    error.response.data.detail ||
+    "Something went wrong."
+  );
+} else {
+  setErrorMessage(
+    "Unable to connect to the server."
+  );
+}
+
+    setLoading(false);
+    setProgress(0);
+  }
+};
 
   return (
     <div
@@ -292,8 +353,7 @@ function UploadResume({ darkMode, setDarkMode }) {
             marginBottom: "40px"
           }}
         >
-          Upload your PDF/DOCX resume and get
-          AI-powered insights.
+          Upload your PDF/DOCX resume and get AI-powered insights.
         </p>
 
         {/* UPLOAD BOX */}
@@ -324,7 +384,7 @@ function UploadResume({ darkMode, setDarkMode }) {
 
 <input
   type="file"
-  accept=".pdf,.doc,.docx"
+  accept=".pdf,.docx"
   onChange={(e) => setSelectedFile(e.target.files[0])}
   style={{
     color: darkMode ? "#ffffff" : "#000000",
@@ -421,6 +481,25 @@ function UploadResume({ darkMode, setDarkMode }) {
             }}
           />
         )}
+
+{/* ERROR MESSAGE */}
+
+{errorMessage && (
+  <div
+    style={{
+      background: "#fee2e2",
+      color: "#b91c1c",
+      border: "1px solid #fecaca",
+      borderRadius: "12px",
+      padding: "14px",
+      marginBottom: "20px",
+      textAlign: "center",
+      fontWeight: "600"
+    }}
+  >
+    {errorMessage}
+  </div>
+)}
 
         {/* BUTTON */}
 

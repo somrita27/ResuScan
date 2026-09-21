@@ -33,6 +33,9 @@ function Profile({ darkMode }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [totalAnalyses, setTotalAnalyses] = useState(0);
+const [averageATS, setAverageATS] = useState("--");
+const [lastAnalysis, setLastAnalysis] = useState("--");
 
   useEffect(() => {
     const handleResize = () => {
@@ -47,6 +50,34 @@ function Profile({ darkMode }) {
         handleResize
       );
   }, []);
+
+  useEffect(() => {
+  const savedHistory =
+    JSON.parse(localStorage.getItem("resumeHistory")) || [];
+
+  const total = savedHistory.length;
+
+  setTotalAnalyses(total);
+
+  if (total > 0) {
+    const scores = savedHistory
+      .map((item) => parseFloat(item.ats))
+      .filter((score) => !isNaN(score));
+
+    if (scores.length > 0) {
+      const average =
+        scores.reduce((sum, score) => sum + score, 0) /
+        scores.length;
+
+      setAverageATS(`${average.toFixed(0)}%`);
+    }
+
+    setLastAnalysis(savedHistory[0].date);
+  } else {
+    setAverageATS("--");
+    setLastAnalysis("--");
+  }
+}, []);
 
   return (
     <div
@@ -425,7 +456,7 @@ paddingBottom: "5px",
           margin: "15px 0 5px"
         }}
       >
-        0
+        {totalAnalyses}
       </h2>
 
       <p
@@ -459,7 +490,7 @@ paddingBottom: "5px",
           margin: "15px 0 5px"
         }}
       >
-        --
+        {averageATS}
       </h2>
 
       <p
@@ -493,7 +524,7 @@ paddingBottom: "5px",
           margin: "15px 0 5px"
         }}
       >
-        --
+        {lastAnalysis}
       </h2>
 
       <p
